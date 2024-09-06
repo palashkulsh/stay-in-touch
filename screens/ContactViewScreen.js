@@ -14,7 +14,7 @@ import RepeatDaysModal from '../components/RepeatDaysModal';
 import ContactedModal from '../components/ContactedModal';
 import TimelineModal from '../components/TimelineModal';  // New import
 
-const ContactViewScreen = ({ route }) => {
+const ContactViewScreen = ({ route, navigation }) => {
   const { contact } = route.params;
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
@@ -39,6 +39,13 @@ const ContactViewScreen = ({ route }) => {
   const [isTimelineModalVisible, setIsTimelineModalVisible] = useState(false);
   const [timelineData, setTimelineData] = useState([]);    
 
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: false, // This will hide the header for this specific screen
+    });
+  }, [navigation]);
+    
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
@@ -622,13 +629,14 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 15,
+    padding: 4,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e1e1e1',
   },
   footerButton: {
-    padding: 10,
+      padding: 10,
+      borderColor: '#ddd',      
   },
   lastContactedText: {
     fontSize: 14,

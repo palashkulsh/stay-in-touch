@@ -17,9 +17,13 @@ const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 const ContactStack = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="ContactList" component={ContactListScreen} options={{ title: 'Contacts' }} />
-    <Stack.Screen name="ContactView" component={ContactViewScreen} options={{ title: 'Contact Details' }} />
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false, // This will hide the header for all screens in this stack
+    }}
+  >
+    <Stack.Screen name="ContactList" component={ContactListScreen} />
+    <Stack.Screen name="ContactView" component={ContactViewScreen} />
   </Stack.Navigator>
 );
 
@@ -102,6 +106,8 @@ const App = () => {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
+	tabBarShowLabel: false, // This will hide the tab labels
+	headerShown: false, // This will hide the header for all tabs	      
         })}
       >
         <Tab.Screen name="Contacts" component={ContactStack} />
