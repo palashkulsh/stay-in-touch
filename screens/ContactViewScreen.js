@@ -12,6 +12,7 @@ import * as Sharing from 'expo-sharing';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RepeatDaysModal from '../components/RepeatDaysModal';
 import ContactedModal from '../components/ContactedModal';
+import TimelineModal from '../components/TimelineModal';  // New import
 
 const ContactViewScreen = ({ route }) => {
   const { contact } = route.params;
@@ -35,6 +36,8 @@ const ContactViewScreen = ({ route }) => {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const noteInputRef = useRef(null);
 
+  const [isTimelineModalVisible, setIsTimelineModalVisible] = useState(false);
+  const [timelineData, setTimelineData] = useState([]);    
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -130,6 +133,20 @@ const loadLastContactedDate = async (database) => {
   }
 };
 
+  const loadTimelineData = useCallback(async () => {
+    if (db) {
+      try {
+        const result = await db.getAllAsync(
+          'SELECT contactedDate, notes.content as note FROM contacted_on LEFT JOIN notes ON contacted_on.contactId = notes.contactId AND contacted_on.contactedDate = notes.date WHERE contacted_on.contactId = ? ORDER BY contactedDate DESC',
+          [contact.id]
+        );
+        setTimelineData(result);
+      } catch (error) {
+        console.error('Error loading timeline data:', error);
+      }
+    }
+  }, [db, contact.id]);
+    
   const loadContactSettings = async (database) => {
     try {
       console.log('Loading contact settings for:', contact.id);
@@ -230,25 +247,48 @@ const loadLastContactedDate = async (database) => {
     }
   };
 
-  const updateRepeatDays = async (days) => {
-    console.log('inside updateRepeatDays')
-    if (db) {
-      try {
-        await db.runAsync(
-          'INSERT OR REPLACE INTO contactSettings (contactId, repeatDays) VALUES (?, ?)',
-          [contact.id, days]
-        );
-        setRepeatDays(days);
-        Alert.alert('Success', `Repeat days set to ${days}`);
-      } catch (error) {
-        console.error('Error updating repeat days:', error);
-        Alert.alert('Error', 'Failed to update repeat days. Please try again.');
-      }
-    } else {
-      Alert.alert('Error', 'Database is not ready. Please try again later.');
-    }
-  };
 
+    const updateRepeatDays = async (days) => {
+	console.log('days', days);
+	console.log('inside updateRepeatDays');
+	if (db) {
+	    try {
+		await db.runAsync(
+		    'INSERT OR REPLACE INTO contactSettings (contactId, repeatDays) VALUES (?, ?)',
+		    [contact.id, days]
+		);
+		setRepeatDays(days);
+		setTempRepeatDays(days.toString());
+		Alert.alert('Success', `Repeat days set to ${days}`);
+	    } catch (error) {
+		console.error('Error updating repeat days:', error);
+		Alert.alert('Error', 'Failed to update repeat days. Please try again.');
+	    }
+	} else {
+	    Alert.alert('Error', 'Database is not ready. Please try again later.');
+	}
+    };
+
+    const deleteRepeatDays = async () => {
+	console.log('inside deleteRepeatDays');
+	if (db) {
+	    try {
+		await db.runAsync(
+		    'DELETE FROM contactSettings WHERE contactId = ?',
+		    [contact.id]
+		);
+		setRepeatDays(null);
+		setTempRepeatDays('');
+		Alert.alert('Success', 'Repeat days removed');
+	    } catch (error) {
+		console.error('Error deleting repeat days:', error);
+		Alert.alert('Error', 'Failed to remove repeat days. Please try again.');
+	    }
+	} else {
+	    Alert.alert('Error', 'Database is not ready. Please try again later.');
+	}
+    };
+    
 const addContactedEntry = async () => {
   if (db) {
     try {
@@ -424,17 +464,28 @@ const addContactedEntry = async () => {
           <Ionicons name="checkmark-circle-outline" size={24} color="#4CD964" />
         </TouchableOpacity>
 
+        <TouchableOpacity 
+          style={styles.footerButton} 
+          onPress={() => {
+            loadTimelineData();
+            setIsTimelineModalVisible(true);
+          }}
+        >
+          <Ionicons name="time-outline" size={24} color="#FF9500" />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.footerButton} onPress={exportNotes}>
           <Ionicons name="share-outline" size={24} color="#FF9500" />
         </TouchableOpacity>
       </View>
-
+	
 	<RepeatDaysModal
         isVisible={isRepeatDaysModalVisible}
         setIsVisible={setIsRepeatDaysModalVisible}
         tempRepeatDays={tempRepeatDays  || repeatDays}
         setTempRepeatDays={setTempRepeatDays}
         updateRepeatDays={updateRepeatDays}
+	deleteRepeatDays={deleteRepeatDays}
         contactName={contact.name}
       />
 
@@ -452,6 +503,12 @@ const addContactedEntry = async () => {
         isTimePickerVisible={isTimePickerVisible}
         setTimePickerVisibility={setTimePickerVisibility}
       />
+
+      <TimelineModal
+        isVisible={isTimelineModalVisible}
+        setIsVisible={setIsTimelineModalVisible}
+        timelineData={timelineData}
+      />
 	
       {lastContactedDate && repeatDays > 0 && (
         <Text style={styles.lastContactedText}>
@@ -465,50 +522,42 @@ const addContactedEntry = async () => {
 };
 
 const styles = StyleSheet.create({
-  noteActions: {
-    flexDirection: 'row',
-  },
-  editButton: {
-    padding: 5,
-    marginRight: 5,
-  },    
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   container: {
     flex: 1,
-    padding: 15,
     backgroundColor: '#f5f5f5',
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    padding: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e1e1',
   },
   image: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e1e1e1',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 15,
+    justifyContent: 'space-around',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e1e1',
   },
   actionButton: {
     padding: 10,
-    marginHorizontal: 20,
   },
   notesSection: {
     flex: 1,
-    marginBottom: 10,
+    padding: 15,
   },
   sectionTitle: {
     fontSize: 18,
@@ -517,7 +566,7 @@ const styles = StyleSheet.create({
   },
   addNoteContainer: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   input: {
     flex: 1,
@@ -528,6 +577,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     height: 80,
     textAlignVertical: 'top',
+    backgroundColor: '#fff',
   },
   addButton: {
     backgroundColor: '#007AFF',
@@ -536,23 +586,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 50,
+    height: 50,
   },
   noteItem: {
     backgroundColor: '#fff',
-    padding: 10,
+    padding: 15,
     borderRadius: 5,
     marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   noteContent: {
-    flex: 1,
     fontSize: 16,
+    marginBottom: 5,
   },
   noteDate: {
     fontSize: 12,
     color: '#999',
+  },
+  noteActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 5,
+  },
+  editButton: {
+    padding: 5,
     marginRight: 10,
   },
   deleteButton: {
@@ -561,9 +622,10 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 10,
+    padding: 15,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: '#e1e1e1',
   },
   footerButton: {
     padding: 10,
@@ -572,8 +634,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginTop: 5,
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
+
 
 export default ContactViewScreen;
