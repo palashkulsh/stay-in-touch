@@ -235,8 +235,8 @@ const loadLastContactedDate = async (database) => {
     if (db) {
       try {
         await db.runAsync(
-          'INSERT OR REPLACE INTO contactSettings (contactId, repeatDays, lastContactedDate) VALUES (?, ?, ?)',
-          [contact.id, days, lastContactedDate ? lastContactedDate.toISOString() : null]
+          'INSERT OR REPLACE INTO contactSettings (contactId, repeatDays) VALUES (?, ?)',
+          [contact.id, days]
         );
         setRepeatDays(days);
         Alert.alert('Success', `Repeat days set to ${days}`);
