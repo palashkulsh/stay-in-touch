@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, Text, Switch, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, TouchableOpacity, Text, Switch, StyleSheet, Alert, ToastAndroid } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import * as Contacts from 'expo-contacts';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,8 +22,14 @@ const RepeatContactListScreen = ({ navigation }) => {
 
         try {
             const { status } = await Contacts.requestPermissionsAsync();
-            console.log(status);
             if (status === 'granted') {
+		// checking if table exists
+		let table_existence = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type='table' AND name='contactSettings'");
+		if(!table_existence || !table_existence.length){
+		    // if contactSettings table does not exist then exit without going further.
+		    ToastAndroid.show('No active repeat contacts', ToastAndroid.SHORT);
+		    return;
+		}
                 const { data } = await Contacts.getContactsAsync({
                     fields: [Contacts.Fields.ID, Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
                 });
@@ -38,7 +44,6 @@ const RepeatContactListScreen = ({ navigation }) => {
                      WHERE cs.repeatDays > 0`,
                     []
                 );
-                console.log(rows);
                 const settings = rows;
                 const contactsWithSettings = data.filter(contact => 
                     settings.some(setting => setting.contactId === contact.id)
@@ -86,7 +91,7 @@ const RepeatContactListScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                     <TouchableOpacity 
                         style={styles.contactItem}
-                        onPress={() => navigation.navigate('ContactView', { contact: {id: item.id} })}
+                        onPress={() => navigation.navigate('ContactView', { contact: item })}
                     >
                         <Text style={styles.contactName}>{item.name}</Text>
                         <Text style={styles.lastContacted}>

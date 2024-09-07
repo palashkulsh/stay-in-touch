@@ -40,6 +40,7 @@ const RepeatDaysModal = ({ isVisible, setIsVisible, tempRepeatDays, setTempRepea
 			    <TouchableOpacity
 				style={[styles.button, styles.buttonSubmit]}
 				onPress={() => {
+				    console.log("repeatDays inside modal",tempRepeatDays);
 				    const days = parseInt(tempRepeatDays);
 				    if (isNaN(days) || days < 1) {
 					Alert.alert('Error', 'Please enter a valid number of days.');

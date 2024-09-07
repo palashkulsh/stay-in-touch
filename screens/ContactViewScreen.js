@@ -40,6 +40,8 @@ const ContactViewScreen = ({ route, navigation }) => {
   const [timelineData, setTimelineData] = useState([]);    
 
 
+  console.log(tempRepeatDays,repeatDays);
+    
   useEffect(() => {
     navigation.setOptions({
       headerShown: false, // This will hide the header for this specific screen
@@ -98,7 +100,7 @@ const initDatabase = async (database) => {
   try {
     await database.execAsync(`
       CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, contactId TEXT, content TEXT, date TEXT);
-      CREATE TABLE IF NOT EXISTS contactSettings (id INTEGER PRIMARY KEY AUTOINCREMENT, contactId TEXT, repeatDays INTEGER);
+      CREATE TABLE IF NOT EXISTS contactSettings (id INTEGER PRIMARY KEY AUTOINCREMENT, contactId TEXT UNIQUE, repeatDays INTEGER);
       CREATE TABLE IF NOT EXISTS contacted_on (id INTEGER PRIMARY KEY AUTOINCREMENT, contactId TEXT, contactedDate TEXT);
     `);
     await loadNotes(database);
@@ -257,13 +259,15 @@ const loadLastContactedDate = async (database) => {
 
     const updateRepeatDays = async (days) => {
 	console.log('days', days);
-	console.log('inside updateRepeatDays');
+	console.log('inside updateRepeatDays', days);
 	if (db) {
 	    try {
 		await db.runAsync(
 		    'INSERT OR REPLACE INTO contactSettings (contactId, repeatDays) VALUES (?, ?)',
 		    [contact.id, days]
 		);
+		let result=  await db.getAllAsync('select * from contactSettings ',[])
+		console.log("refetch inside updaterepeatdays",result);
 		setRepeatDays(days);
 		setTempRepeatDays(days.toString());
 		Alert.alert('Success', `Repeat days set to ${days}`);
@@ -326,22 +330,6 @@ const addContactedEntry = async () => {
   }
 };
 
-  const updateLastContactedDate = async () => {
-    if (db) {
-      const now = new Date();
-      try {
-        await db.runAsync(
-          'INSERT OR REPLACE INTO contactSettings (contactId, repeatDays, lastContactedDate) VALUES (?, ?, ?)',
-          [contact.id, repeatDays, now.toISOString()]
-        );
-        setLastContactedDate(now);
-        Alert.alert('Success', 'Marked as contacted today');
-      } catch (error) {
-        console.error('Error updating last contacted date:', error);
-        Alert.alert('Error', 'Failed to update last contacted date. Please try again.');
-      }
-    }
-  };
 
   const openPhoneApp = useCallback(() => {
     if (contact.phoneNumbers && contact.phoneNumbers[0]) {
